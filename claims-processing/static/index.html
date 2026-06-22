@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OPD Claims Portal</title>
+  <style>
+    /* ── Reset & base ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --brand:   #1a56db;
+      --brand-d: #1142a6;
+      --success: #057a55;
+      --warn:    #b45309;
+      --danger:  #c81e1e;
+      --manual:  #6b21a8;
+      --bg:      #f3f4f6;
+      --card:    #ffffff;
+      --border:  #e5e7eb;
+      --text:    #111827;
+      --muted:   #6b7280;
+      --radius:  10px;
+    }
+    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ── Layout ───────────────────────────────────────────────── */
+    header { background: var(--brand); color: #fff; padding: 14px 28px; display: flex; align-items: center; gap: 14px; }
+    header svg { flex-shrink: 0; }
+    header h1 { font-size: 1.15rem; font-weight: 700; letter-spacing: -.01em; }
+    header span { font-size: .8rem; opacity: .75; margin-top: 2px; }
+
+    main { max-width: 960px; margin: 28px auto; padding: 0 16px 60px; display: grid; gap: 24px; }
+
+    /* ── Cards ────────────────────────────────────────────────── */
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
+    .card h2 { font-size: 1rem; font-weight: 700; margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+
+    /* ── Form grid ────────────────────────────────────────────── */
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media(max-width:600px){ .grid2 { grid-template-columns: 1fr; } }
+    label { display: block; font-size: .825rem; font-weight: 600; color: var(--muted); margin-bottom: 5px; }
+    input, select { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 7px; font-size: .9rem; outline: none; transition: border-color .15s; }
+    input:focus, select:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(26,86,219,.12); }
+
+    /* ── File drop zone ───────────────────────────────────────── */
+    #drop-zone {
+      border: 2px dashed var(--border); border-radius: var(--radius);
+      padding: 28px; text-align: center; cursor: pointer; transition: border-color .2s, background .2s;
+      color: var(--muted); font-size: .875rem;
+    }
+    #drop-zone.drag-over { border-color: var(--brand); background: #eff6ff; }
+    #drop-zone svg { display: block; margin: 0 auto 10px; opacity: .5; }
+    #file-list { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
+    .file-chip { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 20px; padding: 4px 12px; font-size: .8rem; display: flex; align-items: center; gap: 6px; }
+    .file-chip button { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 1rem; line-height: 1; padding: 0 2px; }
+
+    /* ── Buttons ──────────────────────────────────────────────── */
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 22px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; font-size: .9rem; transition: background .15s, opacity .15s; }
+    .btn-primary { background: var(--brand); color: #fff; }
+    .btn-primary:hover { background: var(--brand-d); }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-ghost { background: none; border: 1px solid var(--border); color: var(--text); }
+    .btn-ghost:hover { background: var(--bg); }
+    .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+    /* ── Decision badge ───────────────────────────────────────── */
+    .badge {
+      display: inline-block; padding: 4px 14px; border-radius: 20px; font-size: .82rem;
+      font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
+    }
+    .badge-APPROVED      { background: #d1fae5; color: var(--success); }
+    .badge-PARTIAL       { background: #fef3c7; color: var(--warn); }
+    .badge-REJECTED      { background: #fee2e2; color: var(--danger); }
+    .badge-MANUAL_REVIEW { background: #ede9fe; color: var(--manual); }
+
+    /* ── Result card ──────────────────────────────────────────── */
+    #result-card { display: none; }
+    .result-hero { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+    .amount-row { display: flex; gap: 24px; flex-wrap: wrap; }
+    .amount-box { background: var(--bg); border-radius: 8px; padding: 12px 18px; min-width: 140px; }
+    .amount-box .lbl { font-size: .75rem; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+    .amount-box .val { font-size: 1.35rem; font-weight: 800; }
+
+    /* ── Checks trace ─────────────────────────────────────────── */
+    .checks { display: grid; gap: 6px; margin-top: 16px; }
+    .check-row { display: flex; align-items: flex-start; gap: 10px; font-size: .845rem; padding: 8px 12px; border-radius: 7px; background: var(--bg); }
+    .check-row .icon { flex-shrink: 0; margin-top: 1px; }
+    .check-name { font-weight: 600; margin-right: 6px; }
+    .check-detail { color: var(--muted); }
+    .check-impact { margin-top: 3px; font-size: .775rem; color: var(--brand); }
+
+    /* ── Fraud flags ──────────────────────────────────────────── */
+    .flag-list { display: grid; gap: 6px; margin-top: 10px; }
+    .flag { background: #fef9c3; border: 1px solid #fde68a; border-radius: 7px; padding: 7px 12px; font-size: .825rem; }
+
+    /* ── Loader ───────────────────────────────────────────────── */
+    #loader { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.3); z-index: 999; align-items: center; justify-content: center; }
+    .spinner { width: 48px; height: 48px; border: 5px solid #fff; border-top-color: var(--brand); border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Toast ────────────────────────────────────────────────── */
+    #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1f2937; color: #fff; padding: 10px 22px; border-radius: 8px; font-size: .875rem; opacity: 0; transition: opacity .25s; pointer-events: none; z-index: 1000; }
+    #toast.show { opacity: 1; }
+
+    /* ── Claims history ───────────────────────────────────────── */
+    table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+    th { text-align: left; padding: 9px 12px; background: var(--bg); border-bottom: 1px solid var(--border); font-weight: 700; color: var(--muted); font-size: .775rem; text-transform: uppercase; letter-spacing: .04em; }
+    td { padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f9fafb; cursor: pointer; }
+    #history-empty { text-align: center; color: var(--muted); padding: 28px; font-size: .875rem; }
+    .conf-bar { height: 6px; background: var(--border); border-radius: 3px; width: 80px; overflow: hidden; }
+    .conf-fill { height: 100%; border-radius: 3px; background: var(--brand); }
+
+    /* ── Section header row ───────────────────────────────────── */
+    .section-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+    .section-hdr h2 { margin: 0; padding: 0; border: none; font-size: 1rem; font-weight: 700; }
+    details summary { cursor: pointer; font-weight: 600; font-size: .875rem; color: var(--brand); list-style: none; margin-top: 14px; }
+    details summary::-webkit-details-marker { display: none; }
+    details[open] summary { margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+  </svg>
+  <div>
+    <h1>OPD Claims Portal</h1>
+    <span>Health Insurance Claims Processing</span>
+  </div>
+</header>
+
+<main>
+
+  <!-- ── Submission form ─────────────────────────────────────── -->
+  <div class="card" id="form-card">
+    <h2>Submit a New Claim</h2>
+    <form id="claim-form" novalidate>
+      <div class="grid2">
+        <div>
+          <label for="member_id">Member ID *</label>
+          <input id="member_id" name="member_id" placeholder="e.g. EMP001" required />
+        </div>
+        <div>
+          <label for="policy_id">Policy ID *</label>
+          <input id="policy_id" name="policy_id" placeholder="e.g. PLM-GHI-2024" required />
+        </div>
+        <div>
+          <label for="claim_category">Claim Category *</label>
+          <select id="claim_category" name="claim_category" required>
+            <option value="">— Select —</option>
+            <option value="CONSULTATION">Consultation</option>
+            <option value="DIAGNOSTIC">Diagnostic</option>
+            <option value="PHARMACY">Pharmacy</option>
+            <option value="DENTAL">Dental</option>
+            <option value="VISION">Vision</option>
+            <option value="ALTERNATIVE_MEDICINE">Alternative Medicine</option>
+          </select>
+        </div>
+        <div>
+          <label for="treatment_date">Treatment Date *</label>
+          <input id="treatment_date" name="treatment_date" type="date" required />
+        </div>
+        <div>
+          <label for="claimed_amount">Claimed Amount (₹) *</label>
+          <input id="claimed_amount" name="claimed_amount" type="number" min="1" step="0.01" placeholder="e.g. 1500" required />
+        </div>
+        <div>
+          <label for="hospital_name">Hospital / Clinic Name</label>
+          <input id="hospital_name" name="hospital_name" placeholder="e.g. Apollo Hospitals" />
+        </div>
+        <div>
+          <label for="ytd_claims_amount">YTD Approved Amount (₹)</label>
+          <input id="ytd_claims_amount" name="ytd_claims_amount" type="number" min="0" step="0.01" value="0" />
+        </div>
+      </div>
+
+      <!-- File upload -->
+      <div style="margin-top:20px">
+        <label>Supporting Documents * <span style="font-weight:400;color:var(--muted)">(PDF, PNG, JPG)</span></label>
+        <div id="drop-zone" role="button" tabindex="0" aria-label="Upload files">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Click or drag &amp; drop files here
+          <input type="file" id="file-input" name="files" multiple accept=".pdf,.png,.jpg,.jpeg" style="display:none" />
+        </div>
+        <div id="file-list"></div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn btn-ghost" onclick="resetForm()">Reset</button>
+        <button type="submit" class="btn btn-primary" id="submit-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Submit Claim
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ── Decision result ─────────────────────────────────────── -->
+  <div class="card" id="result-card">
+    <div class="result-hero">
+      <div>
+        <div style="font-size:.75rem;color:var(--muted);font-weight:600;margin-bottom:6px">DECISION</div>
+        <span id="res-badge" class="badge"></span>
+        <div style="margin-top:8px;font-size:.8rem;color:var(--muted)">Claim ID: <span id="res-id" style="font-family:monospace"></span></div>
+      </div>
+      <div class="amount-row">
+        <div class="amount-box">
+          <div class="lbl">Claimed</div>
+          <div class="val" id="res-claimed"></div>
+        </div>
+        <div class="amount-box">
+          <div class="lbl">Approved</div>
+          <div class="val" id="res-approved" style="color:var(--success)"></div>
+        </div>
+        <div class="amount-box">
+          <div class="lbl">Confidence</div>
+          <div class="val" id="res-conf"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rejection reasons -->
+    <div id="res-reasons-wrap" style="display:none;margin-bottom:16px">
+      <div style="font-size:.8rem;font-weight:700;color:var(--danger);margin-bottom:6px">Rejection Reasons</div>
+      <ul id="res-reasons" style="padding-left:18px;font-size:.85rem;display:grid;gap:4px;color:var(--danger)"></ul>
+    </div>
+
+    <!-- Policy checks trace -->
+    <details>
+      <summary>▸ Policy Check Trace</summary>
+      <div class="checks" id="res-checks"></div>
+    </details>
+
+    <!-- Fraud flags -->
+    <div id="res-fraud-wrap" style="display:none">
+      <details style="margin-top:4px">
+        <summary>▸ Fraud Signals</summary>
+        <div class="flag-list" id="res-flags"></div>
+      </details>
+    </div>
+
+    <!-- Pipeline notes -->
+    <div id="res-notes-wrap" style="display:none">
+      <details style="margin-top:4px">
+        <summary>▸ Pipeline Notes</summary>
+        <ul id="res-notes" style="padding-left:18px;font-size:.83rem;color:var(--muted);margin-top:8px;display:grid;gap:4px"></ul>
+      </details>
+    </div>
+
+    <div style="margin-top:18px;display:flex;gap:10px">
+      <button class="btn btn-ghost" onclick="scrollToForm()">Submit Another</button>
+    </div>
+  </div>
+
+  <!-- ── Claims history ──────────────────────────────────────── -->
+  <div class="card">
+    <div class="section-hdr">
+      <h2>Recent Claims</h2>
+      <button class="btn btn-ghost" style="padding:6px 14px;font-size:.8rem" onclick="loadHistory()">↺ Refresh</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table id="history-table">
+        <thead>
+          <tr>
+            <th>Claim ID</th>
+            <th>Member</th>
+            <th>Category</th>
+            <th>Claimed</th>
+            <th>Approved</th>
+            <th>Decision</th>
+            <th>Confidence</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody id="history-body">
+          <tr><td colspan="8" id="history-empty">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<!-- Loader overlay -->
+<div id="loader"><div class="spinner"></div></div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+
+// ── File management ───────────────────────────────────────────
+const fileMap = new Map(); // name → File
+const dropZone = document.getElementById("drop-zone");
+const fileInput = document.getElementById("file-input");
+
+dropZone.addEventListener("click", () => fileInput.click());
+dropZone.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") fileInput.click(); });
+dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("drag-over"); });
+dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
+dropZone.addEventListener("drop", e => {
+  e.preventDefault(); dropZone.classList.remove("drag-over");
+  addFiles(e.dataTransfer.files);
+});
+fileInput.addEventListener("change", () => { addFiles(fileInput.files); fileInput.value = ""; });
+
+function addFiles(fileList) {
+  for (const f of fileList) {
+    const ext = f.name.split(".").pop().toLowerCase();
+    if (!["pdf","png","jpg","jpeg"].includes(ext)) { showToast(`Skipped ${f.name}: unsupported type`); continue; }
+    fileMap.set(f.name, f);
+  }
+  renderFileList();
+}
+
+function renderFileList() {
+  const list = document.getElementById("file-list");
+  list.innerHTML = "";
+  for (const [name] of fileMap) {
+    const chip = document.createElement("div");
+    chip.className = "file-chip";
+    chip.innerHTML = `<span>${esc(name)}</span><button onclick="removeFile('${esc(name)}')" title="Remove">×</button>`;
+    list.appendChild(chip);
+  }
+}
+
+function removeFile(name) { fileMap.delete(name); renderFileList(); }
+
+// ── Form submit ───────────────────────────────────────────────
+document.getElementById("claim-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const form = e.target;
+
+  const required = ["member_id","policy_id","claim_category","treatment_date","claimed_amount"];
+  for (const id of required) {
+    if (!form[id]?.value.trim()) { showToast(`Please fill in: ${id.replace(/_/g," ")}`); return; }
+  }
+  if (fileMap.size === 0) { showToast("Please upload at least one document."); return; }
+
+  const fd = new FormData();
+  fd.append("member_id",        form.member_id.value.trim());
+  fd.append("policy_id",        form.policy_id.value.trim());
+  fd.append("claim_category",   form.claim_category.value);
+  fd.append("treatment_date",   form.treatment_date.value);
+  fd.append("claimed_amount",   form.claimed_amount.value);
+  fd.append("ytd_claims_amount", form.ytd_claims_amount.value || "0");
+  if (form.hospital_name.value.trim()) fd.append("hospital_name", form.hospital_name.value.trim());
+  for (const [, file] of fileMap) fd.append("files", file);
+
+  showLoader(true);
+  document.getElementById("submit-btn").disabled = true;
+
+  try {
+    const resp = await fetch("/claims/submit", { method: "POST", body: fd });
+    const data = await resp.json();
+    if (!resp.ok) {
+      showToast(data.detail || "Submission failed.");
+      return;
+    }
+    renderResult(data);
+    loadHistory();
+  } catch (err) {
+    showToast("Network error — is the server running?");
+  } finally {
+    showLoader(false);
+    document.getElementById("submit-btn").disabled = false;
+  }
+});
+
+// ── Render decision result ────────────────────────────────────
+function renderResult(d) {
+  const card = document.getElementById("result-card");
+  card.style.display = "block";
+  card.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  const badge = document.getElementById("res-badge");
+  badge.textContent = d.decision;
+  badge.className = "badge badge-" + d.decision;
+
+  document.getElementById("res-id").textContent = d.claim_id;
+  document.getElementById("res-claimed").textContent = fmt(d.claimed_amount);
+  document.getElementById("res-approved").textContent = fmt(d.approved_amount);
+  document.getElementById("res-conf").textContent = pct(d.confidence_score);
+
+  // Rejection reasons
+  const rw = document.getElementById("res-reasons-wrap");
+  const rl = document.getElementById("res-reasons");
+  if (d.rejection_reasons && d.rejection_reasons.length) {
+    rl.innerHTML = d.rejection_reasons.map(r => `<li>${esc(r)}</li>`).join("");
+    rw.style.display = "";
+  } else { rw.style.display = "none"; }
+
+  // Policy check trace
+  const checks = document.getElementById("res-checks");
+  checks.innerHTML = "";
+  const policyChecks = d.policy_decision?.checks || [];
+  for (const c of policyChecks) {
+    const icon = c.passed
+      ? `<svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#057a55" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`
+      : `<svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c81e1e" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+    const row = document.createElement("div");
+    row.className = "check-row";
+    row.innerHTML = `${icon}<div>
+      <span class="check-name">${esc(c.check_name)}</span>
+      <span class="check-detail">${esc(c.detail)}</span>
+      ${c.impact ? `<div class="check-impact">${esc(c.impact)}</div>` : ""}
+    </div>`;
+    checks.appendChild(row);
+  }
+
+  // Fraud flags
+  const fw = document.getElementById("res-fraud-wrap");
+  const fl = document.getElementById("res-flags");
+  const flags = d.fraud_result?.flags || [];
+  if (flags.length) {
+    fl.innerHTML = flags.map(f => `<div class="flag">⚠ ${esc(f)}</div>`).join("");
+    fw.style.display = "";
+  } else { fw.style.display = "none"; }
+
+  // Pipeline notes
+  const nw = document.getElementById("res-notes-wrap");
+  const nl = document.getElementById("res-notes");
+  const notes = d.pipeline_notes || [];
+  if (notes.length) {
+    nl.innerHTML = notes.map(n => `<li>${esc(n)}</li>`).join("");
+    nw.style.display = "";
+  } else { nw.style.display = "none"; }
+}
+
+// ── Claims history ────────────────────────────────────────────
+async function loadHistory() {
+  try {
+    const resp = await fetch("/claims/?limit=20");
+    const rows = await resp.json();
+    const tbody = document.getElementById("history-body");
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="8" id="history-empty" style="text-align:center;color:var(--muted);padding:28px">No claims yet.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = rows.map(r => `
+      <tr onclick="viewClaim('${esc(r.claim_id)}')">
+        <td><span style="font-family:monospace;font-size:.78rem">${esc(r.claim_id.slice(0,8))}…</span></td>
+        <td>${esc(r.member_id)}</td>
+        <td>${esc(r.category)}</td>
+        <td>${fmt(r.claimed_amount)}</td>
+        <td>${fmt(r.approved_amount)}</td>
+        <td><span class="badge badge-${esc(r.decision)}">${esc(r.decision)}</span></td>
+        <td>
+          <div class="conf-bar"><div class="conf-fill" style="width:${Math.round(r.confidence_score*100)}%"></div></div>
+          <span style="font-size:.75rem;color:var(--muted)">${pct(r.confidence_score)}</span>
+        </td>
+        <td style="color:var(--muted);font-size:.8rem">${fmtDate(r.submitted_at)}</td>
+      </tr>`).join("");
+  } catch { /* silently fail on history load */ }
+}
+
+async function viewClaim(id) {
+  showLoader(true);
+  try {
+    const resp = await fetch(`/claims/${id}`);
+    if (!resp.ok) { showToast("Claim not found."); return; }
+    const data = await resp.json();
+    renderResult(data);
+  } finally { showLoader(false); }
+}
+
+// ── Utilities ─────────────────────────────────────────────────
+function fmt(n) { return "₹" + Number(n).toLocaleString("en-IN", { maximumFractionDigits: 0 }); }
+function pct(n) { return (n * 100).toFixed(0) + "%"; }
+function fmtDate(s) { return s ? new Date(s).toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" }) : "—"; }
+function esc(s) {
+  return String(s ?? "")
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+function showLoader(v) { document.getElementById("loader").style.display = v ? "flex" : "none"; }
+
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 3500);
+}
+
+function resetForm() {
+  document.getElementById("claim-form").reset();
+  fileMap.clear(); renderFileList();
+  document.getElementById("result-card").style.display = "none";
+}
+
+function scrollToForm() {
+  document.getElementById("form-card").scrollIntoView({ behavior: "smooth" });
+}
+
+// ── Init ──────────────────────────────────────────────────────
+loadHistory();
+</script>
+</body>
+</html>
